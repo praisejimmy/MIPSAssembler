@@ -1,10 +1,11 @@
 	add $s0, $0, $zero
+label1:
 	addi $t0, $t0, 100
-	addi $a0, $a0,100
+label2:addi $a0, $a0,100
     add $s0, $s0, $a0
-	addi $a0, $a0, -1
-	bne $a0, $0, test
-	addi $a0, $a0, 100
+    label3:	addi $a0, $a0, -1
+        label4:	bne $a0, $0, test
+  label5:	addi $a0, $a0, 100
 
 
 

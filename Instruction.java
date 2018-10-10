@@ -1,3 +1,5 @@
+package MIPSAssembler;
+
 import java.io.*;
 import java.util.*;
 
