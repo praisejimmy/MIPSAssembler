@@ -10,11 +10,15 @@ public class Label{
     }
 
     public int getAddress(){
-        return address;
+        return this.address;
+    }
+
+    public void setAddress(int address){
+        this.address = address;
     }
 
     public String getLabel(){
-        return label;
+        return this.label;
     }
 
     public String toString(){
