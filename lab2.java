@@ -4,10 +4,12 @@ import java.util.*;
 class Instruction {
     private String op;
     private String[] fields;
+    private int line;
 
-    public Instruction(String op, String[] fields) {
+    public Instruction(String op, String[] fields, int line) {
         this.op = op;
         this.fields = fields;
+        this.line = line;
     }
 
     public String toString(){
@@ -19,6 +21,10 @@ class Instruction {
             }
         }
         return "";
+    }
+
+    public int getLineNum() {
+        return this.line;
     }
 
     public String getOp() {
@@ -83,13 +89,18 @@ class Register {
 
 
 public class lab2 {
-    String[] register_asm_lut = {"zero", "at", "v0", "v1", "a0", "a1", "a2",
+    static ArrayList<Label> labels;
+    static String[] register_asm_lut = {"zero", "at", "v0", "v1", "a0", "a1", "a2",
                                  "a3", "t0", "t1", "t2", "t3", "t4", "t5",
                                  "t6", "t7", "s0", "s1", "s2", "s3", "s4", "s5",
                                  "s6", "s7", "t8", "t9", "k0", "k1", "gp",
-                                 "sp", "fp", "ra"};
+                                 "sp", "fp", "ra", "0", "1", "2", "3", "4",
+                                 "5", "6", "7", "8", "9", "10", "11", "12",
+                                 "13", "14", "15", "16", "17", "18", "19",
+                                 "20", "21", "22", "23", "24", "25", "26",
+                                 "27", "28", "29", "30", "31"};
 
-    String[] register_bin_lut = {"00000", "00001", "00010", "00011", "00100",
+    static String[] register_bin_lut = {"00000", "00001", "00010", "00011", "00100",
                                  "00101", "00110", "00111", "01000", "01001",
                                  "01010", "01011", "01100", "01101", "01110",
                                  "01111", "10000", "10001", "10010", "10011",
@@ -102,8 +113,8 @@ public class lab2 {
         Scanner sc = new Scanner(asm);
         String delims = "[() ,$\t]+";
 
-        ArrayList<Label> labels = new ArrayList<Label>();
         ArrayList<Instruction> instructions = new ArrayList<Instruction>();
+        labels = new ArrayList<Label>();
 
         int counter = 0x00;
         while (sc.hasNextLine()) {
@@ -134,29 +145,21 @@ public class lab2 {
                 for (int i = 0; i < fields.length; i++) {
                     fields[i] = instr_parse[i + 1];
                 }
-                instructions.add(new Instruction(instr_parse[0], fields));
+                instructions.add(new Instruction(instr_parse[0], fields, counter));
 
                 //increment address
                 counter++;
             }
         }
-        for(Label label : labels){
-            System.out.println(label);
+        for (Instruction instr : instructions) {
+            printInstr(instr);
         }
-
-        for(Instruction instruction: instructions){
-            System.out.println(instruction);
-        }
-        System.out.println(numToBinString(45));
-        System.out.println(numToBinString(12452));
-        System.out.println(numToBinString(0));
-        System.out.println(numToBinString(-6));
     }
 
-    static String numToBinString(int to_conv) {
+    static String numToBinString(int to_conv, int bits) {
         String bin_ret = "";
         int bit_cnt = 0;
-        while (bit_cnt < 32) {
+        while (bit_cnt < bits) {
             if ((to_conv & 0x01) > 0) {
                 bin_ret = "1" + bin_ret;
             }
@@ -169,11 +172,78 @@ public class lab2 {
         return bin_ret;
     }
 
-    void printInstr(Instruction instr) {
+    static void printInstr(Instruction instr) throws Exception {
         String bin_instr = "";
-        if (instr.getOp().toLowerCase().equals("add")) {
-
+        String op = instr.getOp().toLowerCase();
+        int curr_add;
+        switch(op) {
+            case "add":
+                bin_instr = "000000 " + getRegBin(instr.getField(1)) + " " + getRegBin(instr.getField(2)) + " " + getRegBin(instr.getField(0)) + " 00000 100000";
+                break;
+            case "or":
+                bin_instr = "000000 " + getRegBin(instr.getField(1)) + " " + getRegBin(instr.getField(2)) + " " + getRegBin(instr.getField(0)) + " 00000 100101";
+                break;
+            case "and":
+                bin_instr = "000000 " + getRegBin(instr.getField(1)) + " " + getRegBin(instr.getField(2)) + " " + getRegBin(instr.getField(0)) + " 00000 100100";
+                break;
+            case "addi":
+                bin_instr = "001000 " + getRegBin(instr.getField(1)) + " " + getRegBin(instr.getField(0)) + " " + numToBinString(Integer.parseInt(instr.getField(2)), 16);
+                break;
+            case "sll":
+                bin_instr = "000000 00000 " + getRegBin(instr.getField(1)) + " " + getRegBin(instr.getField(0)) + " " + numToBinString(Integer.parseInt(instr.getField(2)), 5) + " 000000";
+                break;
+            case "sub":
+                bin_instr = "000000 " + getRegBin(instr.getField(1)) + " " + getRegBin(instr.getField(2)) + " " + getRegBin(instr.getField(0)) + " 00000 100010";
+                break;
+            case "slt":
+                bin_instr = "000000 " + getRegBin(instr.getField(1)) + " " + getRegBin(instr.getField(2)) + " " + getRegBin(instr.getField(0)) + " 00000 101010";
+                break;
+            case "beq":
+                curr_add = getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1);
+                bin_instr = "000100 " + getRegBin(instr.getField(0)) + " " + getRegBin(instr.getField(1)) + " " + numToBinString(curr_add, 16);
+                break;
+            case "bne":
+                curr_add = getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1);
+                bin_instr = "000101 " + getRegBin(instr.getField(0)) + " " + getRegBin(instr.getField(1)) + " " + numToBinString(curr_add, 16);
+                break;
+            case "lw":
+                bin_instr = "100011 " + getRegBin(instr.getField(2)) + " " + getRegBin(instr.getField(0)) + " " + numToBinString(Integer.parseInt(instr.getField(1)), 16);
+                break;
+            case "sw":
+                bin_instr = "101011 " + getRegBin(instr.getField(2)) + " " + getRegBin(instr.getField(0)) + " " + numToBinString(Integer.parseInt(instr.getField(1)), 16);
+                break;
+            case "j":
+                curr_add = getLabelAddress(instr.getField(0)) - (instr.getLineNum() + 1);
+                bin_instr = "000010 " + numToBinString(curr_add, 26);
+                break;
+            case "jr":
+                bin_instr = "000000 " + getRegBin(instr.getField(0)) + " 000000000000000 001000";
+                break;
+            case "jal":
+                curr_add = getLabelAddress(instr.getField(0)) - (instr.getLineNum() + 1);
+                System.out.println(curr_add);
+                bin_instr = "000011 " + numToBinString(curr_add, 26);
+                break;
         }
+        System.out.println(bin_instr);
+    }
+
+    static String getRegBin(String reg) throws Exception {
+        for (int i = 0; i < 64; i++) {
+            if (register_asm_lut[i].equals(reg)) {
+                return register_bin_lut[i % 32];
+            }
+        }
+        throw new Exception("Register " + reg + " not valid");
+    }
+
+    static int getLabelAddress(String match) throws Exception {
+        for (Label label : labels) {
+            if (match.equals(label.getLabel())) {
+                return label.getAddress();
+            }
+        }
+        throw new Exception("Label " + match + " not valid");
     }
 
 }
