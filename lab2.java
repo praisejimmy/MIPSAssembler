@@ -1,7 +1,68 @@
-package MIPSAssembler;
-
 import java.io.*;
 import java.util.*;
+
+class Instruction {
+    private String opcode;    
+
+    public Instruction(String opcode, String[] fields) {
+        this.opcode = opcode;        
+    }
+    
+    public String toString(){
+        return this.opcode;
+    }
+}
+
+class Label{
+    private String label;
+    private int address;
+
+    public Label(String l, int a){
+        this.label = l;
+        this.address = a;
+    }
+
+    public int getAddress(){
+        return this.address;
+    }
+
+    public void setAddress(int address){
+        this.address = address;
+    }
+
+    public String getLabel(){
+        return this.label;
+    }
+
+    public String toString(){
+        return getLabel() + ", " + getAddress();
+    }
+
+}
+
+class Register {
+    String reg;
+    int val;
+
+    public Register(String reg, int val) {
+        this.reg = reg;
+        this.val = val;
+    }
+
+    public int getVal() {
+        return val;
+    }
+
+    public void setVal(int new_val) {
+        this.val = new_val;
+    }
+
+    public String getName() {
+        return reg;
+    }
+
+}                
+
 
 public class lab2 {
 
@@ -11,7 +72,7 @@ public class lab2 {
         String delims = "[ ,$\t]+";
 
         ArrayList<Label> labels = new ArrayList<Label>();
-
+        ArrayList<Instruction> instructions = new ArrayList<Instruction>();
 
         int counter = 0x00;
         while (sc.hasNextLine()) {
@@ -25,7 +86,7 @@ public class lab2 {
             if (colon_loc != -1){
                 Label new_label = new Label(code_ln.substring(0,colon_loc), -1);
                 labels.add(new_label);
-                code_ln = code_ln.substring(colon_loc).trim();
+                code_ln = code_ln.substring(colon_loc+1).trim();
             }
 
             if (code_ln.length() > 1){//more than just a colon. real code
@@ -37,7 +98,7 @@ public class lab2 {
                 }
 
                 //make instruction
-
+                instructions.add(new Instruction(code_ln, null));
 
                 //increment address
                 counter++;
@@ -45,6 +106,10 @@ public class lab2 {
         }
         for(Label label : labels){
             System.out.println(label);
+        }
+
+        for(Instruction instruction: instructions){
+            System.out.println(instruction);
         }
     }
 
