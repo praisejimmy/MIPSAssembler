@@ -2,15 +2,33 @@ import java.io.*;
 import java.util.*;
 
 class Instruction {
-    private String opcode;    
+    private String op;
+    private String[] fields;
 
-    public Instruction(String opcode, String[] fields) {
-        this.opcode = opcode;        
+    public Instruction(String op, String[] fields) {
+        this.op = op;
+        this.fields = fields;
     }
-    
+
     public String toString(){
-        return this.opcode;
+        System.out.print(op + ", ");
+        for (int i = 0; i < fields.length; i++) {
+            System.out.print(fields[i]);
+            if (i < fields.length - 1) {
+                System.out.print(", ");
+            }
+        }
+        return "";
     }
+
+    public String getOp() {
+        return this.op;
+    }
+
+    public String getField(int field_num) {
+        return this.fields[field_num];
+    }
+
 }
 
 class Label{
@@ -61,15 +79,28 @@ class Register {
         return reg;
     }
 
-}                
+}
 
 
 public class lab2 {
+    String[] register_asm_lut = {"zero", "at", "v0", "v1", "a0", "a1", "a2",
+                                 "a3", "t0", "t1", "t2", "t3", "t4", "t5",
+                                 "t6", "t7", "s0", "s1", "s2", "s3", "s4", "s5",
+                                 "s6", "s7", "t8", "t9", "k0", "k1", "gp",
+                                 "sp", "fp", "ra"};
+
+    String[] register_bin_lut = {"00000", "00001", "00010", "00011", "00100",
+                                 "00101", "00110", "00111", "01000", "01001",
+                                 "01010", "01011", "01100", "01101", "01110",
+                                 "01111", "10000", "10001", "10010", "10011",
+                                 "10100", "10101", "10110", "10111", "11000",
+                                 "11001", "11010", "11011", "11100", "11101",
+                                 "11110", "11111"};
 
     public static void main(String[] args) throws Exception {
         File asm = new File(args[0]);
         Scanner sc = new Scanner(asm);
-        String delims = "[ ,$\t]+";
+        String delims = "[() ,$\t]+";
 
         ArrayList<Label> labels = new ArrayList<Label>();
         ArrayList<Instruction> instructions = new ArrayList<Instruction>();
@@ -98,7 +129,12 @@ public class lab2 {
                 }
 
                 //make instruction
-                instructions.add(new Instruction(code_ln, null));
+                String[] instr_parse = code_ln.split(delims);
+                String[] fields = new String[instr_parse.length - 1];
+                for (int i = 0; i < fields.length; i++) {
+                    fields[i] = instr_parse[i + 1];
+                }
+                instructions.add(new Instruction(instr_parse[0], fields));
 
                 //increment address
                 counter++;
@@ -110,6 +146,30 @@ public class lab2 {
 
         for(Instruction instruction: instructions){
             System.out.println(instruction);
+        }
+    }
+
+    static String numToBinString(int to_conv) {
+        String bin_ret = "";
+        while (to_conv != 0) {
+            if ((to_conv & 0x01) > 0) {
+                bin_ret = "1" + bin_ret;
+            }
+            else {
+                bin_ret = "0" + bin_ret;
+            }
+            to_conv = to_conv >>> 1;
+        }
+        while (bin_ret.length() != 32) {
+            bin_ret = "0" + bin_ret;
+        }
+        return bin_ret;
+    }
+
+    void printInstr(Instruction instr) {
+        String bin_instr = "";
+        if (instr.getOp().toLowerCase().equals("add")) {
+
         }
     }
 
