@@ -147,11 +147,16 @@ public class lab2 {
         for(Instruction instruction: instructions){
             System.out.println(instruction);
         }
+        System.out.println(numToBinString(45));
+        System.out.println(numToBinString(12452));
+        System.out.println(numToBinString(0));
+        System.out.println(numToBinString(-6));
     }
 
     static String numToBinString(int to_conv) {
         String bin_ret = "";
-        while (to_conv != 0) {
+        int bit_cnt = 0;
+        while (bit_cnt < 32) {
             if ((to_conv & 0x01) > 0) {
                 bin_ret = "1" + bin_ret;
             }
@@ -159,9 +164,7 @@ public class lab2 {
                 bin_ret = "0" + bin_ret;
             }
             to_conv = to_conv >>> 1;
-        }
-        while (bin_ret.length() != 32) {
-            bin_ret = "0" + bin_ret;
+            bit_cnt++;
         }
         return bin_ret;
     }
