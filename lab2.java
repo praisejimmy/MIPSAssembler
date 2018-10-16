@@ -213,17 +213,21 @@ public class lab2 {
                 bin_instr = "101011 " + getRegBin(instr.getField(2)) + " " + getRegBin(instr.getField(0)) + " " + numToBinString(Integer.parseInt(instr.getField(1)), 16);
                 break;
             case "j":
-                curr_add = getLabelAddress(instr.getField(0)) - (instr.getLineNum() + 1);
+                //curr_add = (instr.getLineNum() + 1) - getLabelAddress(instr.getField(0));
+                curr_add = getLabelAddress(instr.getField(0));
                 bin_instr = "000010 " + numToBinString(curr_add, 26);
                 break;
             case "jr":
                 bin_instr = "000000 " + getRegBin(instr.getField(0)) + " 000000000000000 001000";
                 break;
             case "jal":
-                curr_add = getLabelAddress(instr.getField(0)) - (instr.getLineNum() + 1);
-                System.out.println(curr_add);
+                //curr_add = (instr.getLineNum() + 1) - getLabelAddress(instr.getField(0));
+                curr_add = getLabelAddress(instr.getField(0));
                 bin_instr = "000011 " + numToBinString(curr_add, 26);
                 break;
+            default:
+                System.out.println("invalid instruction: " + op);
+                System.exit(-1);
         }
         System.out.println(bin_instr);
     }
