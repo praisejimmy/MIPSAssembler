@@ -1,3 +1,6 @@
+// Name: Andrew Brown, Ryan Myers
+// Section: 01
+// Lab 2: MIPS Assembler
 import java.io.*;
 import java.util.*;
 
