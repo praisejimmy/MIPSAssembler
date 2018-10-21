@@ -169,9 +169,50 @@ public class lab2 {
                 counter++;
             }
         }
+        Scanner user_in = new Scanner(System.in);
+        String command = "";
+
         while (pc < counter) {
+            System.out.println(pc);
+            System.out.println(instructions.get(pc));
             System.out.print("mips> ");
-            pc++;
+            command = user_in.nextLine();
+            String[] command_parse = command.split(" ");
+            switch(command_parse[0]) {
+                case "h":
+                    // show help message
+                    break;
+                case "d":
+                    // dump registers
+                    for (int i = 0; i < 32; i++) {
+                        System.out.println(register_asm_lut[i] + ": " + regfile[i]);
+                    }
+                    break;
+                case "s":
+                    if (command_parse.length > 1) {
+                        // step through command_parse[1] instructions
+                    }
+                    else {
+                        // step once
+                        execInstr(instructions.get(pc));
+                        pc++;
+                    }
+                    break;
+                case "r":
+                    // run till program ends
+                    break;
+                case "m":
+                    // display RAM memory from command_parse[1 -> 2]
+                    break;
+                case "c":
+                    // clear all registers, reset program
+                    break;
+                case "q":
+                    System.exit(0);
+                default:
+                    System.out.println("invalid command: " + command);
+                    System.exit(-1);
+            }
         }
     }
 
@@ -255,6 +296,7 @@ public class lab2 {
         String op = instr.getOp().toLowerCase();
         int op1;
         int op2;
+        int offset;
         switch(op) {
             case "add":
                 op1 = regfile[getRegNum(instr.getField(1))];
@@ -273,8 +315,9 @@ public class lab2 {
                 break;
             case "addi":
                 op1 = regfile[getRegNum(instr.getField(1))];
-                op2 = regfile[getImmediate(instr.getField(2))];
-                regfile[getRegNum(instr.getField(0))] = op1 | op2;
+                op2 = getImmediate(instr.getField(2));
+            default:
+                op2;
                 break;
             case "sll":
                 op1 = regfile[getRegNum(instr.getField(1))];
@@ -297,18 +340,38 @@ public class lab2 {
                 }
                 break;
             case "beq":
+                op1 = regfile[getRegNum(instr.getField(0))];
+                op2 = regfile[getRegNum(instr.getField(1))];
+                if (op1 == op2) {
+                    pc += getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1);
+                }
                 break;
             case "bne":
+                op1 = regfile[getRegNum(instr.getField(0))];
+                op2 = regfile[getRegNum(instr.getField(1))];
+                if (op1 != op2) {
+                    pc += getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1);
+                }
                 break;
             case "lw":
+                op1 = regfile[getRegNum(instr.getField(2))];
+                offset = getImmediate(instr.getField(1));
+                regfile[getRegNum(instr.getField(0))] = ram[offset + op1];
                 break;
             case "sw":
+                op1 = regfile[getRegNum(instr.getField(2))];
+                offset = getImmediate(instr.getField(1));
+                ram[offset + op1] = regfile[getRegNum(instr.getField(0))];
                 break;
             case "j":
+                pc = getLabelAddress(instr.getField(0));
                 break;
             case "jr":
+                pc = regfile[getRegNum(instr.getField(0))];
                 break;
             case "jal":
+                regfile[31] = pc;
+                pc = getLabelAddress(instr.getField(0));
                 break;
             default:
                 System.out.println("invalid instruction: " + op);
