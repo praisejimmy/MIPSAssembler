@@ -111,7 +111,22 @@ public class lab2 {
                                  "11001", "11010", "11011", "11100", "11101",
                                  "11110", "11111"};
 
+    static int[] regfile = new int[32];
+
+    static int[] ram = new int[8192];
+
+    static int pc;
+
     public static void main(String[] args) throws Exception {
+        // init register file, ram, and pc
+        for (int i = 0; i < 32; i++) {
+            regfile[i] = 0;
+        }
+        for (int i = 0; i < 8192; i++) {
+            ram[i] = 0;
+        }
+        pc = 0;
+
         File asm = new File(args[0]);
         Scanner sc = new Scanner(asm);
         String delims = "[() ,$\t]+";
@@ -154,8 +169,9 @@ public class lab2 {
                 counter++;
             }
         }
-        for (Instruction instr : instructions) {
-            printInstr(instr);
+        while (pc < counter) {
+            System.out.print("mips> ");
+            pc++;
         }
     }
 
@@ -235,6 +251,71 @@ public class lab2 {
         System.out.println(bin_instr);
     }
 
+    static void execInstr(Instruction instr) throws Exception {
+        String op = instr.getOp().toLowerCase();
+        int op1;
+        int op2;
+        switch(op) {
+            case "add":
+                op1 = regfile[getRegNum(instr.getField(1))];
+                op2 = regfile[getRegNum(instr.getField(2))];
+                regfile[getRegNum(instr.getField(0))] = op1 + op2;
+                break;
+            case "or":
+                op1 = regfile[getRegNum(instr.getField(1))];
+                op2 = regfile[getRegNum(instr.getField(2))];
+                regfile[getRegNum(instr.getField(0))] = op1 | op2;
+                break;
+            case "and":
+                op1 = regfile[getRegNum(instr.getField(1))];
+                op2 = regfile[getRegNum(instr.getField(2))];
+                regfile[getRegNum(instr.getField(0))] = op1 & op2;
+                break;
+            case "addi":
+                op1 = regfile[getRegNum(instr.getField(1))];
+                op2 = regfile[getImmediate(instr.getField(2))];
+                regfile[getRegNum(instr.getField(0))] = op1 | op2;
+                break;
+            case "sll":
+                op1 = regfile[getRegNum(instr.getField(1))];
+                op2 = regfile[getRegNum(instr.getField(2))];
+                regfile[getRegNum(instr.getField(0))] = op1 << op2;
+                break;
+            case "sub":
+                op1 = regfile[getRegNum(instr.getField(1))];
+                op2 = regfile[getRegNum(instr.getField(2))];
+                regfile[getRegNum(instr.getField(0))] = op1 - op2;
+                break;
+            case "slt":
+                op1 = regfile[getRegNum(instr.getField(1))];
+                op2 = regfile[getRegNum(instr.getField(2))];
+                if (op1 < op2) {
+                    regfile[getRegNum(instr.getField(0))] = 1;
+                }
+                else {
+                    regfile[getRegNum(instr.getField(0))] = 0;
+                }
+                break;
+            case "beq":
+                break;
+            case "bne":
+                break;
+            case "lw":
+                break;
+            case "sw":
+                break;
+            case "j":
+                break;
+            case "jr":
+                break;
+            case "jal":
+                break;
+            default:
+                System.out.println("invalid instruction: " + op);
+                System.exit(-1);
+        }
+    }
+
     static String getRegBin(String reg) throws Exception {
         for (int i = 0; i < 64; i++) {
             if (register_asm_lut[i].equals(reg)) {
@@ -242,6 +323,19 @@ public class lab2 {
             }
         }
         throw new Exception("Register " + reg + " not valid");
+    }
+
+    static int getRegNum(String reg) throws Exception {
+        for (int i = 0; i < 64; i++) {
+            if (register_asm_lut[i].equals(reg)) {
+                return i % 32;
+            }
+        }
+        throw new Exception("Register " + reg + " not valid");
+    }
+
+    static int getImmediate(String num) throws Exception {
+        return Integer.parseInt(num);
     }
 
     static int getLabelAddress(String match) throws Exception {
