@@ -181,6 +181,14 @@ public class lab2 {
             switch(command_parse[0]) {
                 case "h":
                     // show help message
+                    System.out.println("\nh = show help\n" +
+"d = dump register state\n" +
+"s = single step through the program (i.e. execute 1 instruction and stop)\n" +
+"s num = step through num instructions of the program\n" +
+"r = run until the program ends\n" +
+"m num1 num2 = display data memory from location num1 to num2\n" +
+"c = clear all registers, memory, and the program counter to 0\n" +
+"q = exit the program\n");
                     break;
                 case "d":
                     // dump registers
@@ -191,6 +199,10 @@ public class lab2 {
                 case "s":
                     if (command_parse.length > 1) {
                         // step through command_parse[1] instructions
+                        for(int i = 0; i < Integer.parseInt(command_parse[1]); i++){
+                            execInstr(instructions.get(pc));
+                            pc++;
+                        }
                     }
                     else {
                         // step once
@@ -200,12 +212,24 @@ public class lab2 {
                     break;
                 case "r":
                     // run till program ends
+                    while(pc < counter){
+                        execInstr(instructions.get(pc));
+                        pc++;
+                    }
                     break;
                 case "m":
                     // display RAM memory from command_parse[1 -> 2]
+                    
                     break;
                 case "c":
                     // clear all registers, reset program
+                    for (int i = 0; i < 32; i++){
+                        regfile[i] = 0;
+                    }
+                    for (int i = 0; i < 8192; i++){
+                        ram[i] = 0;
+                    }
+                    pc = 0;
                     break;
                 case "q":
                     System.exit(0);
@@ -316,8 +340,7 @@ public class lab2 {
             case "addi":
                 op1 = regfile[getRegNum(instr.getField(1))];
                 op2 = getImmediate(instr.getField(2));
-            default:
-                op2;
+                regfile[getRegNum(instr.getField(0))] = op1 + op2;
                 break;
             case "sll":
                 op1 = regfile[getRegNum(instr.getField(1))];
