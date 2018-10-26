@@ -169,57 +169,87 @@ public class lab2 {
                 counter++;
             }
         }
-        Scanner user_in = new Scanner(System.in);
+        sc.close();
+        Scanner user_in;
+        if (args.length > 1) {
+            File script = new File(args[1]);
+            user_in = new Scanner(script);
+        }
+        else {
+            user_in = new Scanner(System.in);
+        }
         String command = "";
 
-        while (pc < counter) {
-            System.out.println(pc);
-            System.out.println(instructions.get(pc));
+        while (true) {
             System.out.print("mips> ");
             command = user_in.nextLine();
             String[] command_parse = command.split(" ");
+            System.out.print(command);
             switch(command_parse[0]) {
                 case "h":
                     // show help message
                     System.out.println("\nh = show help\n" +
-"d = dump register state\n" +
-"s = single step through the program (i.e. execute 1 instruction and stop)\n" +
-"s num = step through num instructions of the program\n" +
-"r = run until the program ends\n" +
-"m num1 num2 = display data memory from location num1 to num2\n" +
-"c = clear all registers, memory, and the program counter to 0\n" +
-"q = exit the program\n");
+                    "d = dump register state\n" +
+                    "s = single step through the program (i.e. execute 1 instruction and stop)\n" +
+                    "s num = step through num instructions of the program\n" +
+                    "r = run until the program ends\n" +
+                    "m num1 num2 = display data memory from location num1 to num2\n" +
+                    "c = clear all registers, memory, and the program counter to 0\n" +
+                    "q = exit the program\n");
                     break;
                 case "d":
                     // dump registers
-                    for (int i = 0; i < 32; i++) {
-                        System.out.println(register_asm_lut[i] + ": " + regfile[i]);
+                    System.out.println("\n\npc = " + pc);
+                    String regstr = "$0 = " + regfile[0];
+                    System.out.print(padRight(regstr, 16));
+                    for (int i = 1; i < 32; i++) {
+                        regstr = "$" + register_asm_lut[i] + " = " + regfile[i];
+                        System.out.print(padRight(regstr, 16));
+                        if ((i + 1) % 4 == 0) {
+                            System.out.println();
+                        }
                     }
+                    System.out.println();
                     break;
                 case "s":
+                    if (pc > counter) {
+                        break;
+                    }
                     if (command_parse.length > 1) {
                         // step through command_parse[1] instructions
                         for(int i = 0; i < Integer.parseInt(command_parse[1]); i++){
                             execInstr(instructions.get(pc));
                             pc++;
                         }
+                        System.out.println("\n        " + Integer.parseInt(command_parse[1]) + " instruction(s) executed");
                     }
                     else {
                         // step once
                         execInstr(instructions.get(pc));
                         pc++;
+                        System.out.println("\n        1 instruction(s) executed");
                     }
                     break;
                 case "r":
+                    if (pc > counter) {
+                        break;
+                    }
                     // run till program ends
                     while(pc < counter){
                         execInstr(instructions.get(pc));
                         pc++;
                     }
+                    System.out.println();
                     break;
                 case "m":
                     // display RAM memory from command_parse[1 -> 2]
-                    
+                    int from = Integer.parseInt(command_parse[1]);
+                    int to = Integer.parseInt(command_parse[2]);
+                    System.out.println("\n");
+                    for (; from <= to; from++) {
+                        System.out.println("[" + from + "] = " + ram[from]);
+                    }
+                    System.out.println();
                     break;
                 case "c":
                     // clear all registers, reset program
@@ -230,11 +260,12 @@ public class lab2 {
                         ram[i] = 0;
                     }
                     pc = 0;
+                    System.out.println("\n        Simulator reset\n");
                     break;
                 case "q":
                     System.exit(0);
                 default:
-                    System.out.println("invalid command: " + command);
+                    System.out.println("\ninvalid command: " + command);
                     System.exit(-1);
             }
         }
@@ -432,5 +463,9 @@ public class lab2 {
         }
         throw new Exception("Label " + match + " not valid");
     }
+
+    static String padRight(String s, int n) {
+        return String.format("%1$-" + n + "s", s);
+}
 
 }
