@@ -183,8 +183,9 @@ public class lab2 {
         while (true) {
             System.out.print("mips> ");
             command = user_in.nextLine();
+            if (args.length > 1)
+                System.out.println(command);
             String[] command_parse = command.split(" ");
-            System.out.print(command);
             switch(command_parse[0]) {
                 case "h":
                     // show help message
@@ -199,36 +200,29 @@ public class lab2 {
                     break;
                 case "d":
                     // dump registers
-                    System.out.println("\n\npc = " + pc);
-                    String regstr = "$0 = " + regfile[0];
-                    System.out.print(padRight(regstr, 16));
-                    for (int i = 1; i < 32; i++) {
-                        regstr = "$" + register_asm_lut[i] + " = " + regfile[i];
-                        System.out.print(padRight(regstr, 16));
-                        if ((i + 1) % 4 == 0) {
-                            System.out.println();
-                        }
-                    }
-                    System.out.println();
+                    System.out.println("\npc = " + pc + "\n" +
+"$0 = " + regfile[0] + "          $v0 = " + regfile[2] + "         $v1 = " + regfile[3] + "         $a0 = " + regfile[4] + "\n" +
+"$a1 = " + regfile[5] + "         $a2 = " + regfile[6] + "         $a3 = " + regfile[7] + "         $t0 = " + regfile[8] + "\n" +
+"$t1 = " + regfile[9] + "         $t2 = " + regfile[10] + "         $t3 = " + regfile[11] + "         $t4 = " + regfile[12] + "\n" +
+"$t5 = " + regfile[13] + "         $t6 = " + regfile[14] + "         $t7 = " + regfile[15] + "         $s0 = " + regfile[16] + "\n" +
+"$s1 = " + regfile[17] + "         $s2 = " + regfile[18] + "         $s3 = " + regfile[19] + "         $s4 = " + regfile[20] + "\n" +
+"$s5 = " + regfile[21] + "         $s6 = " + regfile[22] + "         $s7 = " + regfile[23] + "         $t8 = " + regfile[24] + "\n" +
+"$t9 = " + regfile[25] + "         $sp = " + regfile[29] + "         $ra = " + regfile[31] + "\n");
                     break;
                 case "s":
                     if (pc > counter) {
                         break;
                     }
+                    int length = 1;
                     if (command_parse.length > 1) {
-                        // step through command_parse[1] instructions
-                        for(int i = 0; i < Integer.parseInt(command_parse[1]); i++){
-                            execInstr(instructions.get(pc));
-                            pc++;
-                        }
-                        System.out.println("\n        " + Integer.parseInt(command_parse[1]) + " instruction(s) executed");
+                        length = Integer.parseInt(command_parse[1]);
                     }
-                    else {
-                        // step once
+                    // step through length instructions
+                    for(int i = 0; i < length && i < counter; i++){
                         execInstr(instructions.get(pc));
                         pc++;
-                        System.out.println("\n        1 instruction(s) executed");
                     }
+                    System.out.println("        " + length + " instruction(s) executed");
                     break;
                 case "r":
                     if (pc > counter) {
@@ -239,7 +233,6 @@ public class lab2 {
                         execInstr(instructions.get(pc));
                         pc++;
                     }
-                    System.out.println();
                     break;
                 case "m":
                     // display RAM memory from command_parse[1 -> 2]
@@ -260,12 +253,12 @@ public class lab2 {
                         ram[i] = 0;
                     }
                     pc = 0;
-                    System.out.println("\n        Simulator reset\n");
+                    System.out.println("        Simulator reset\n");
                     break;
                 case "q":
                     System.exit(0);
                 default:
-                    System.out.println("\ninvalid command: " + command);
+                    System.out.println("invalid command: " + command);
                     System.exit(-1);
             }
         }
@@ -418,14 +411,14 @@ public class lab2 {
                 ram[offset + op1] = regfile[getRegNum(instr.getField(0))];
                 break;
             case "j":
-                pc = getLabelAddress(instr.getField(0));
+                pc = getLabelAddress(instr.getField(0)) - 1;
                 break;
             case "jr":
-                pc = regfile[getRegNum(instr.getField(0))];
+                pc = regfile[getRegNum(instr.getField(0))] - 1;
                 break;
             case "jal":
-                regfile[31] = pc;
-                pc = getLabelAddress(instr.getField(0));
+                regfile[31] = pc + 1;
+                pc = getLabelAddress(instr.getField(0)) - 1;
                 break;
             default:
                 System.out.println("invalid instruction: " + op);
