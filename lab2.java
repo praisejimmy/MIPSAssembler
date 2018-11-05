@@ -67,32 +67,12 @@ class Label{
 
 }
 
-class Register {
-    String reg;
-    int val;
-
-    public Register(String reg, int val) {
-        this.reg = reg;
-        this.val = val;
-    }
-
-    public int getVal() {
-        return val;
-    }
-
-    public void setVal(int new_val) {
-        this.val = new_val;
-    }
-
-    public String getName() {
-        return reg;
-    }
-
-}
-
-
 public class lab2 {
     static ArrayList<Label> labels;
+
+    static String[] pipeline_title = {"if/id", "id/exe", "exe/mem", "mem/wb"};
+    static String[] pipeline = {"empty", "empty", "empty", "empty"};
+
     static String[] register_asm_lut = {"zero", "at", "v0", "v1", "a0", "a1", "a2",
                                  "a3", "t0", "t1", "t2", "t3", "t4", "t5",
                                  "t6", "t7", "s0", "s1", "s2", "s3", "s4", "s5",
@@ -117,6 +97,10 @@ public class lab2 {
 
     static int pc;
 
+
+
+    //TODO: Current idea for handeling branches: have some sort of stack of integers to control # cycles before real branch
+    // OR we change implementation to execute in a different stage rather than first
     public static void main(String[] args) throws Exception {
         // init register file, ram, and pc
         for (int i = 0; i < 32; i++) {
@@ -191,9 +175,10 @@ public class lab2 {
                     // show help message
                     System.out.println("\nh = show help\n" +
                     "d = dump register state\n" +
-                    "s = single step through the program (i.e. execute 1 instruction and stop)\n" +
-                    "s num = step through num instructions of the program\n" +
-                    "r = run until the program ends\n" +
+                    "p = show pipeline registers\n" +
+                    "s = step through a single clock cycle step (i.e. simulate 1 cycle and stop)\n" +
+                    "s num = step through num clock cycles\n" +
+                    "r = run until the program ends and display timing summary\n" +
                     "m num1 num2 = display data memory from location num1 to num2\n" +
                     "c = clear all registers, memory, and the program counter to 0\n" +
                     "q = exit the program\n");
@@ -209,8 +194,14 @@ public class lab2 {
 "$s5 = " + regfile[21] + "         $s6 = " + regfile[22] + "         $s7 = " + regfile[23] + "         $t8 = " + regfile[24] + "\n" +
 "$t9 = " + regfile[25] + "         $sp = " + regfile[29] + "         $ra = " + regfile[31] + "\n");
                     break;
+
+                case "p":
+                    // show pipeline registers
+                    printPipelineRegisters();
+                    break;
+
                 case "s":
-                    if (pc > counter) {
+                    if (pc >= counter) {
                         break;
                     }
                     int length = 1;
@@ -219,20 +210,24 @@ public class lab2 {
                     }
                     // step through length instructions
                     for(int i = 0; i < length && i < counter; i++){
+                        pushPipelineReg(instructions.get(pc).getOp());
                         execInstr(instructions.get(pc));
                         pc++;
                     }
-                    System.out.println("        " + length + " instruction(s) executed");
+                    //System.out.println("        " + length + " instruction(s) executed");
+                    printPipelineRegisters();
                     break;
                 case "r":
-                    if (pc > counter) {
+                    if (pc >= counter) {
                         break;
                     }
                     // run till program ends
                     while(pc < counter){
+                        pushPipelineReg(instructions.get(pc).getOp());
                         execInstr(instructions.get(pc));
                         pc++;
                     }
+                    printPipelineRegisters();
                     break;
                 case "m":
                     // display RAM memory from command_parse[1 -> 2]
@@ -262,6 +257,28 @@ public class lab2 {
                     System.exit(-1);
             }
         }
+    }
+
+    static void pushPipelineReg(String instr_name){
+        for (int i = pipeline.length - 1; i > 0; i--){
+            pipeline[i] = pipeline[i-1];
+        }
+        pipeline[0] = instr_name;
+        return;
+    }
+
+    static void printPipelineRegisters(){
+        System.out.print("pc");
+        for(int i = 0; i < pipeline_title.length; i++){
+            System.out.print("\t" + pipeline_title[i]);
+        }
+        System.out.println();
+        System.out.print(pc);
+        for(int i = 0; i < pipeline.length; i++){
+            System.out.print("\t" + pipeline[i]);
+        }
+        System.out.println();
+        return;
     }
 
     static String numToBinString(int to_conv, int bits) {
