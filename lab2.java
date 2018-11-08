@@ -71,7 +71,7 @@ public class lab2 {
     static ArrayList<Label> labels;
 
     static String[] pipeline_title = {"if/id", "id/exe", "exe/mem", "mem/wb"};
-    static String[] pipeline = {"empty", "empty", "empty", "empty"};
+    static Instruction[] pipeline = new Instruction[4];
 
     static String[] register_asm_lut = {"zero", "at", "v0", "v1", "a0", "a1", "a2",
                                  "a3", "t0", "t1", "t2", "t3", "t4", "t5",
@@ -97,6 +97,16 @@ public class lab2 {
 
     static int pc;
 
+    static int cycles;
+
+    static int instr_run;
+
+    static boolean delay;
+
+    static int stall;
+
+    static int squash;
+
 
 
     //TODO: Current idea for handeling branches: have some sort of stack of integers to control # cycles before real branch
@@ -109,7 +119,15 @@ public class lab2 {
         for (int i = 0; i < 8192; i++) {
             ram[i] = 0;
         }
+        for (int i = 0; i < 4; i++) {
+            pipeline[i] = new Instruction("empty", null, -1);
+        }
         pc = 0;
+        cycles = 0;
+        instr_run = 0;
+        stall = 0;
+        squash = 0;
+        delay = false;
 
         File asm = new File(args[0]);
         Scanner sc = new Scanner(asm);
@@ -204,13 +222,27 @@ public class lab2 {
                     if (pc >= counter) {
                         break;
                     }
+                    if (delay) {
+                        if (stall > 0) {
+                            pushStall();
+                            stall--;
+                        }
+                        else if (squash > 0) {
+                            pushSquash();
+                            squash--;
+                        }
+                        else {
+                            delay = false;
+                        }
+                        break;
+                    }
                     int length = 1;
                     if (command_parse.length > 1) {
                         length = Integer.parseInt(command_parse[1]);
                     }
                     // step through length instructions
                     for(int i = 0; i < length && i < counter; i++){
-                        pushPipelineReg(instructions.get(pc).getOp());
+                        pushPipelineReg(instructions.get(pc));
                         execInstr(instructions.get(pc));
                         pc++;
                     }
@@ -223,7 +255,7 @@ public class lab2 {
                     }
                     // run till program ends
                     while(pc < counter){
-                        pushPipelineReg(instructions.get(pc).getOp());
+                        pushPipelineReg(instructions.get(pc));
                         execInstr(instructions.get(pc));
                         pc++;
                     }
@@ -248,6 +280,7 @@ public class lab2 {
                         ram[i] = 0;
                     }
                     pc = 0;
+                    cycles = 0;
                     System.out.println("        Simulator reset\n");
                     break;
                 case "q":
@@ -259,11 +292,26 @@ public class lab2 {
         }
     }
 
-    static void pushPipelineReg(String instr_name){
+    static void pushPipelineReg(Instruction instr){
         for (int i = pipeline.length - 1; i > 0; i--){
             pipeline[i] = pipeline[i-1];
         }
-        pipeline[0] = instr_name;
+        pipeline[0] = instr;
+        return;
+    }
+
+    static void pushStall() {
+        for (int i = pipeline.length - 1; i > 1; i--) {
+            pipeline[i] = pipeline[i - 1];
+        }
+        pipeline[1] = new Instruction("stall", null, -1);
+    }
+
+    static void pushSquash() {
+        for (int i = pipeline.length - 1; i > 0; i--){
+            pipeline[i] = pipeline[i-1];
+        }
+        pipeline[0] = new Instruction("squash", null, -1);
         return;
     }
 
@@ -275,7 +323,7 @@ public class lab2 {
         System.out.println();
         System.out.print(pc);
         for(int i = 0; i < pipeline.length; i++){
-            System.out.print("\t" + pipeline[i]);
+            System.out.print("\t" + pipeline[i].getOp());
         }
         System.out.println();
         return;
@@ -408,6 +456,7 @@ public class lab2 {
                 op2 = regfile[getRegNum(instr.getField(1))];
                 if (op1 == op2) {
                     pc += getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1);
+                    squash = 3;
                 }
                 break;
             case "bne":
@@ -415,6 +464,7 @@ public class lab2 {
                 op2 = regfile[getRegNum(instr.getField(1))];
                 if (op1 != op2) {
                     pc += getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1);
+                    squash = 3;
                 }
                 break;
             case "lw":
