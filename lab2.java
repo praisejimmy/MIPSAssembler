@@ -8,11 +8,13 @@ class Instruction {
     private String op;
     private String[] fields;
     private int line;
+    private int branch_pc;
 
     public Instruction(String op, String[] fields, int line) {
         this.op = op;
         this.fields = fields;
         this.line = line;
+        this.branch_pc = -1;
     }
 
     public String toString(){
@@ -36,6 +38,18 @@ class Instruction {
 
     public String getField(int field_num) {
         return this.fields[field_num];
+    }
+
+    public String[] getFields(){
+        return this.fields;
+    }
+
+    public void setBranchPC(int pc){
+        this.branch_pc = pc;
+    }
+
+    public int getBranchPC(){
+        return this.branch_pc;
     }
 
 }
@@ -107,6 +121,7 @@ public class lab2 {
 
     static int squash;
 
+    static int temp_pc;
 
 
     //TODO: Current idea for handeling branches: have some sort of stack of integers to control # cycles before real branch
@@ -219,10 +234,10 @@ public class lab2 {
                     break;
 
                 case "s":
-                    if (pc >= counter) {
+                    if (pc >= counter + 3) {
                         break;
                     }
-                    if (delay) {
+                    if (stall > 0 || squash > 0) {
                         if (stall > 0) {
                             pushStall();
                             stall--;
@@ -231,20 +246,34 @@ public class lab2 {
                             pushSquash();
                             squash--;
                         }
-                        else {
-                            delay = false;
+                    }else{
+                        int length = 1;
+                        if (command_parse.length > 1) {
+                            length = Integer.parseInt(command_parse[1]);
                         }
-                        break;
-                    }
-                    int length = 1;
-                    if (command_parse.length > 1) {
-                        length = Integer.parseInt(command_parse[1]);
-                    }
-                    // step through length instructions
-                    for(int i = 0; i < length && i < counter; i++){
-                        pushPipelineReg(instructions.get(pc));
-                        execInstr(instructions.get(pc));
-                        pc++;
+                        // step through length instructions
+                        for(int i = 0; i < length && i < counter; i++){
+
+                            Instruction instr = instructions.get(pc);
+
+                            pushPipelineReg(instr);
+                            if (!delay && !pipeline[1].getOp().equals("stall")){
+                                execInstr(instr);
+                            }
+
+                            Instruction mem_wb_instr = pipeline[pipeline.length - 1];
+                            if (mem_wb_instr.getBranchPC() != -1){
+                                //squash 3 prev
+                                for(int j = 0; j < 3; j++){
+                                    pipeline[j] = new Instruction("squash", null, -1);
+                                }
+                                delay = false;
+                            }
+
+                            if (stall == 0)
+                                pc++;
+
+                        }
                     }
                     //System.out.println("        " + length + " instruction(s) executed");
                     printPipelineRegisters();
@@ -410,6 +439,19 @@ public class lab2 {
         int op1;
         int op2;
         int offset;
+
+        if (pipeline[1].getOp().equals("lw")){
+            String[] fields = instr.getFields();
+            for (int i = 0; i < fields.length; i++){
+                if (fields[i].equals(pipeline[1].getField(0))){
+                    System.out.println("Instruction " + instr.getOp() + "matcches with field " + fields[i]);
+                    stall++;
+                    pc++;
+                    break;
+                }
+            }
+        }
+
         switch(op) {
             case "add":
                 op1 = regfile[getRegNum(instr.getField(1))];
@@ -455,16 +497,16 @@ public class lab2 {
                 op1 = regfile[getRegNum(instr.getField(0))];
                 op2 = regfile[getRegNum(instr.getField(1))];
                 if (op1 == op2) {
-                    pc += getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1);
-                    squash = 3;
+                    instr.setBranchPC(pc + getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1));
+                    delay = true;
                 }
                 break;
             case "bne":
                 op1 = regfile[getRegNum(instr.getField(0))];
                 op2 = regfile[getRegNum(instr.getField(1))];
                 if (op1 != op2) {
-                    pc += getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1);
-                    squash = 3;
+                    instr.setBranchPC(pc + getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1));
+                    delay = true;
                 }
                 break;
             case "lw":
