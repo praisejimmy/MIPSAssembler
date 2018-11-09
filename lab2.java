@@ -121,7 +121,7 @@ public class lab2 {
 
     static int squash;
 
-    static int temp_pc;
+    static int instr_cnt;
 
 
     //TODO: Current idea for handeling branches: have some sort of stack of integers to control # cycles before real branch
@@ -143,6 +143,7 @@ public class lab2 {
         stall = 0;
         squash = 0;
         delay = false;
+        instr_cnt = 0;
 
         File asm = new File(args[0]);
         Scanner sc = new Scanner(asm);
@@ -234,7 +235,18 @@ public class lab2 {
                     break;
 
                 case "s":
+                    System.out.println(cycles);
+                    boolean done = false;
                     if (pc >= counter + 3) {
+                        int j = 0;
+                        while (j < 4){
+                            if (!pipeline[j].getOp().equals("empty") && !pipeline[j].getOp().equals("squash")){
+                                cycles += 4-j;
+                                break;
+                            }
+                            j++;
+                        }
+                        done = true;
                         break;
                     }
                     if (stall > 0 || squash > 0) {
@@ -244,8 +256,12 @@ public class lab2 {
                         }
                         else if (squash > 0) {
                             pushSquash();
+                            pc = pipeline[1].getBranchPC();
+                            pipeline[1].setBranchPC(-1);
                             squash--;
+                            pc++;
                         }
+                        cycles++;
                     }else{
                         int length = 1;
                         if (command_parse.length > 1) {
@@ -253,12 +269,23 @@ public class lab2 {
                         }
                         // step through length instructions
                         for(int i = 0; i < length && i < counter; i++){
-
+                            if (pc >= counter) {
+                                if ((pipeline[0].getOp().equals("beq") || pipeline[0].getOp().equals("bne") || pipeline[0].getOp().equals("empty"))){
+                                    pushPipelineReg(new Instruction("empty", null, -1));
+                                    cycles++;
+                                    pc++;
+                                    continue;
+                                }
+                                done = true;
+                                break;
+                            }
                             Instruction instr = instructions.get(pc);
 
                             pushPipelineReg(instr);
+                            cycles++;
                             if (!delay && !pipeline[1].getOp().equals("stall")){
                                 execInstr(instr);
+                                instr_cnt++;
                             }
 
                             Instruction mem_wb_instr = pipeline[pipeline.length - 1];
@@ -277,18 +304,81 @@ public class lab2 {
                     }
                     //System.out.println("        " + length + " instruction(s) executed");
                     printPipelineRegisters();
+                    if (done) {
+                        System.out.println("\nProgram complete");
+                        System.out.printf("CPI = %.3f" + "\tCycles = " + cycles + "\tInstructions = " + instr_cnt + "\n\n", (cycles*1.0)/instr_cnt);
+                    }
                     break;
                 case "r":
-                    if (pc >= counter) {
+                    // run till program ends
+                    done = false;
+                    if (pc > counter + 3) {
                         break;
                     }
-                    // run till program ends
-                    while(pc < counter){
-                        pushPipelineReg(instructions.get(pc));
-                        execInstr(instructions.get(pc));
-                        pc++;
+                    while(pc < counter + 3){
+                        if (done)
+                            break;
+                        System.out.println(cycles);
+                        System.out.println(instructions.get(pc).getOp());
+                        if (stall > 0 || squash > 0) {
+                            if (stall > 0) {
+                                pushStall();
+                                stall--;
+                            }
+                            else if (squash > 0) {
+                                pushSquash();
+                                pc = pipeline[1].getBranchPC();
+                                pipeline[1].setBranchPC(-1);
+                                pc++;
+                                squash--;
+                            }
+                            cycles++;
+                        }else{
+                            if (pc >= counter) {
+                                if ((pipeline[0].getOp().equals("beq") || pipeline[0].getOp().equals("bne") || pipeline[0].getOp().equals("empty"))){
+                                    pushPipelineReg(new Instruction("empty", null, -1));
+                                    cycles++;
+                                    pc++;
+                                    continue;
+                                }
+                                done = true;
+                                break;
+                            }
+                            Instruction instr = instructions.get(pc);
+
+                            pushPipelineReg(instr);
+                            cycles++;
+                            if (!delay && !pipeline[1].getOp().equals("stall")){
+                                execInstr(instr);
+                                instr_cnt++;
+                            }
+
+                            Instruction mem_wb_instr = pipeline[pipeline.length - 1];
+                            if (mem_wb_instr.getBranchPC() != -1){
+                                //squash 3 prev
+                                for(int j = 0; j < 3; j++){
+                                    pipeline[j] = new Instruction("squash", null, -1);
+                                }
+                                delay = false;
+                            }
+
+                            if (stall == 0)
+                                pc++;
+
+                        }
                     }
+                    int j = 0;
                     printPipelineRegisters();
+                    while (j < 4){
+                        if (!pipeline[j].getOp().equals("empty") && !pipeline[j].getOp().equals("squash")){
+                            cycles += 4-j;
+                            break;
+                        }
+                        j++;
+                    }
+                    System.out.println("\nProgram complete");
+                    System.out.printf("CPI = %.3f" + "\tCycles = " + cycles + "\tInstructions = " + instr_cnt + "\n\n", (cycles*1.0)/instr_cnt);
+                    pc = counter + 4;
                     break;
                 case "m":
                     // display RAM memory from command_parse[1 -> 2]
@@ -345,7 +435,7 @@ public class lab2 {
     }
 
     static void printPipelineRegisters(){
-        System.out.print("pc");
+        System.out.print("\npc");
         for(int i = 0; i < pipeline_title.length; i++){
             System.out.print("\t" + pipeline_title[i]);
         }
@@ -354,7 +444,7 @@ public class lab2 {
         for(int i = 0; i < pipeline.length; i++){
             System.out.print("\t" + pipeline[i].getOp());
         }
-        System.out.println();
+        System.out.println("\n");
         return;
     }
 
@@ -444,7 +534,6 @@ public class lab2 {
             String[] fields = instr.getFields();
             for (int i = 0; i < fields.length; i++){
                 if (fields[i].equals(pipeline[1].getField(0))){
-                    System.out.println("Instruction " + instr.getOp() + "matcches with field " + fields[i]);
                     stall++;
                     pc++;
                     break;
@@ -520,14 +609,17 @@ public class lab2 {
                 ram[offset + op1] = regfile[getRegNum(instr.getField(0))];
                 break;
             case "j":
-                pc = getLabelAddress(instr.getField(0)) - 1;
+                instr.setBranchPC(getLabelAddress(instr.getField(0)) - 1);
+                squash++;
                 break;
             case "jr":
-                pc = regfile[getRegNum(instr.getField(0))] - 1;
+                instr.setBranchPC(regfile[getRegNum(instr.getField(0))] - 1);
+                squash++;
                 break;
             case "jal":
                 regfile[31] = pc + 1;
-                pc = getLabelAddress(instr.getField(0)) - 1;
+                instr.setBranchPC(getLabelAddress(instr.getField(0)) - 1);
+                squash++;
                 break;
             default:
                 System.out.println("invalid instruction: " + op);
