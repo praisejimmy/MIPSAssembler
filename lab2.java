@@ -235,76 +235,82 @@ public class lab2 {
                     break;
 
                 case "s":
-                    System.out.println(cycles);
                     boolean done = false;
-                    if (pc >= counter + 3) {
-                        int j = 0;
-                        while (j < 4){
-                            if (!pipeline[j].getOp().equals("empty") && !pipeline[j].getOp().equals("squash")){
-                                cycles += 4-j;
-                                break;
-                            }
-                            j++;
-                        }
-                        done = true;
-                        break;
+                    int length = 1;
+                    if (command_parse.length > 1) {
+                        length = Integer.parseInt(command_parse[1]);
                     }
-                    if (stall > 0 || squash > 0) {
-                        if (stall > 0) {
-                            pushStall();
-                            stall--;
-                        }
-                        else if (squash > 0) {
-                            pushSquash();
-                            pc = pipeline[1].getBranchPC();
-                            pipeline[1].setBranchPC(-1);
-                            squash--;
-                            pc++;
-                        }
-                        cycles++;
-                    }else{
-                        int length = 1;
-                        if (command_parse.length > 1) {
-                            length = Integer.parseInt(command_parse[1]);
-                        }
-                        // step through length instructions
-                        for(int i = 0; i < length && i < counter; i++){
-                            if (pc >= counter) {
-                                if ((pipeline[0].getOp().equals("beq") || pipeline[0].getOp().equals("bne") || pipeline[0].getOp().equals("empty"))){
-                                    pushPipelineReg(new Instruction("empty", null, -1));
-                                    cycles++;
-                                    pc++;
-                                    continue;
-                                }
+                    // step through length instructions
+                    for(int i = 0; i < length; i++){
+                        //base case to stop
+                        if (pc >= counter){
+                            if (pc >= counter + 3){
                                 done = true;
                                 break;
                             }
-                            Instruction instr = instructions.get(pc);
-
-                            pushPipelineReg(instr);
-                            cycles++;
-                            if (!delay && !pipeline[1].getOp().equals("stall")){
-                                execInstr(instr);
-                                instr_cnt++;
+                            if (pipeline[0].getOp().equals("beq") || pipeline[0].getOp().equals("bne") || pipeline[0].getOp().equals("empty")){
+                                //continue
+                            }else{
+                                done = true;
+                                break;
                             }
+                        }
 
-                            Instruction mem_wb_instr = pipeline[pipeline.length - 1];
+                        if (stall > 0 || squash > 0){
+                            if (stall > 0){
+                                // stall 1 cycle because of use after load
+                                pushStall();
+                                stall--;
+                                cycles++;
+                                continue;
+                            }
+                            else if (squash > 0){
+                                // squash instruction after jump and then jump
+                                pushSquash();
+                                squash--;
+                                pc = pipeline[1].getBranchPC();
+                                pipeline[1].setBranchPC(-1);
+                                pc++;
+                                cycles++;
+                                continue;
+                            }
+                        }
+
+                        Instruction instr = instructions.get(pc);
+                        pushPipelineReg(instr);
+
+                        //execute the instruction if we didn't take a branch and avoid the second execution after a stall
+                        if (!delay && !pipeline[1].getOp().equals("stall")){
+                            execInstr(instr);
+                            instr_cnt++;
+                        }
+
+                        //check if branch that was taken is now in the mem/wb reg
+                        Instruction mem_wb_instr = pipeline[pipeline.length - 1];
+                        if (mem_wb_instr.getOp().equals("beq") || mem_wb_instr.getOp().equals("bne")){
                             if (mem_wb_instr.getBranchPC() != -1){
-                                //squash 3 prev
-                                for(int j = 0; j < 3; j++){
+                                //branch was taken. squash prev 3 and update pc
+                                delay = false;
+                                for (int j = 0; j < 3; j++){
                                     pipeline[j] = new Instruction("squash", null, -1);
                                 }
-                                delay = false;
+                                pc = mem_wb_instr.getBranchPC();
+                                mem_wb_instr.setBranchPC(-1);
                             }
-
-                            if (stall == 0)
-                                pc++;
-
                         }
+
+                        cycles++;
+                        pc++;
                     }
-                    //System.out.println("        " + length + " instruction(s) executed");
                     printPipelineRegisters();
                     if (done) {
+                        //check for instructions that need to reach the end
+                        for (int j = 0; j < 4; j++){
+                            if (!pipeline[j].getOp().equals("beq") && !pipeline[j].getOp().equals("bne") && !pipeline[j].getOp().equals("squash")){
+                                cycles += 4-j;
+                                break;
+                            }
+                        }
                         System.out.println("\nProgram complete");
                         System.out.printf("CPI = %.3f" + "\tCycles = " + cycles + "\tInstructions = " + instr_cnt + "\n\n", (cycles*1.0)/instr_cnt);
                     }
@@ -312,69 +318,84 @@ public class lab2 {
                 case "r":
                     // run till program ends
                     done = false;
-                    if (pc > counter + 3) {
-                        break;
+                    if (pc >= counter) {
+                        if (!(pipeline[0].getOp().equals("beq") || pipeline[0].getOp().equals("bne") || pipeline[0].getOp().equals("empty"))){
+                            if (pc > counter + 3){
+                                break;
+                            }
+                        }else{
+                            break;
+                        }
                     }
                     while(pc < counter + 3){
-                        if (done)
-                            break;
-                        System.out.println(cycles);
-                        System.out.println(instructions.get(pc).getOp());
-                        if (stall > 0 || squash > 0) {
-                            if (stall > 0) {
-                                pushStall();
-                                stall--;
-                            }
-                            else if (squash > 0) {
-                                pushSquash();
-                                pc = pipeline[1].getBranchPC();
-                                pipeline[1].setBranchPC(-1);
-                                pc++;
-                                squash--;
-                            }
-                            cycles++;
-                        }else{
-                            if (pc >= counter) {
-                                if ((pipeline[0].getOp().equals("beq") || pipeline[0].getOp().equals("bne") || pipeline[0].getOp().equals("empty"))){
-                                    pushPipelineReg(new Instruction("empty", null, -1));
-                                    cycles++;
-                                    pc++;
-                                    continue;
-                                }
+                        //base case to stop
+                        if (pc >= counter){
+                            if (pc >= counter + 3){
                                 done = true;
                                 break;
                             }
-                            Instruction instr = instructions.get(pc);
-
-                            pushPipelineReg(instr);
-                            cycles++;
-                            if (!delay && !pipeline[1].getOp().equals("stall")){
-                                execInstr(instr);
-                                instr_cnt++;
+                            if (pipeline[0].getOp().equals("beq") || pipeline[0].getOp().equals("bne") || pipeline[0].getOp().equals("empty")){
+                                //continue
+                            }else{
+                                done = true;
+                                break;
                             }
+                        }
 
-                            Instruction mem_wb_instr = pipeline[pipeline.length - 1];
+                        if (stall > 0 || squash > 0){
+                            if (stall > 0){
+                                // stall 1 cycle because of use after load
+                                pushStall();
+                                stall--;
+                                cycles++;
+                                continue;
+                            }
+                            else if (squash > 0){
+                                // squash instruction after jump and then jump
+                                pushSquash();
+                                squash--;
+                                pc = pipeline[1].getBranchPC();
+                                pipeline[1].setBranchPC(-1);
+                                pc++;
+                                cycles++;
+                                continue;
+                            }
+                        }
+
+                        Instruction instr = instructions.get(pc);
+                        pushPipelineReg(instr);
+
+                        //execute the instruction if we didn't take a branch and avoid the second execution after a stall
+                        if (!delay && !pipeline[1].getOp().equals("stall")){
+                            execInstr(instr);
+                            instr_cnt++;
+                        }
+
+                        //check if branch that was taken is now in the mem/wb reg
+                        Instruction mem_wb_instr = pipeline[pipeline.length - 1];
+                        if (mem_wb_instr.getOp().equals("beq") || mem_wb_instr.getOp().equals("bne")){
                             if (mem_wb_instr.getBranchPC() != -1){
-                                //squash 3 prev
-                                for(int j = 0; j < 3; j++){
+                                //branch was taken. squash prev 3 and update pc
+                                delay = false;
+                                for (int j = 0; j < 3; j++){
                                     pipeline[j] = new Instruction("squash", null, -1);
                                 }
-                                delay = false;
+                                pc = mem_wb_instr.getBranchPC();
+                                mem_wb_instr.setBranchPC(-1);
                             }
-
-                            if (stall == 0)
-                                pc++;
-
                         }
+
+                        cycles++;
+                        pc++;
                     }
-                    int j = 0;
-                    printPipelineRegisters();
-                    while (j < 4){
-                        if (!pipeline[j].getOp().equals("empty") && !pipeline[j].getOp().equals("squash")){
-                            cycles += 4-j;
-                            break;
+                    if (done){
+                        //check for instructions that need to reach the end
+                        for (int j = 0; j < 4; j++){
+                            if (!pipeline[j].getOp().equals("beq") && !pipeline[j].getOp().equals("bne") && !pipeline[j].getOp().equals("squash")){
+                                cycles += 4-j;
+                                break;
+                            }
                         }
-                        j++;
                     }
                     System.out.println("\nProgram complete");
                     System.out.printf("CPI = %.3f" + "\tCycles = " + cycles + "\tInstructions = " + instr_cnt + "\n\n", (cycles*1.0)/instr_cnt);
@@ -398,8 +419,15 @@ public class lab2 {
                     for (int i = 0; i < 8192; i++){
                         ram[i] = 0;
                     }
+                    for (int i = 0; i < pipeline.length; i++){
+                        pipeline[i] = new Instruction("empty", null, -1);
+                    }
+                    delay = false;
+                    stall = 0;
+                    squash = 0;
                     pc = 0;
                     cycles = 0;
+                    instr_cnt = 0;
                     System.out.println("        Simulator reset\n");
                     break;
                 case "q":
@@ -535,7 +563,7 @@ public class lab2 {
             for (int i = 0; i < fields.length; i++){
                 if (fields[i].equals(pipeline[1].getField(0))){
                     stall++;
-                    pc++;
+                    //pc++; Not sure why this is here again
                     break;
                 }
             }
@@ -609,16 +637,16 @@ public class lab2 {
                 ram[offset + op1] = regfile[getRegNum(instr.getField(0))];
                 break;
             case "j":
-                instr.setBranchPC(getLabelAddress(instr.getField(0)) - 1);
+                instr.setBranchPC(getLabelAddress(instr.getField(0))-1);
                 squash++;
                 break;
             case "jr":
-                instr.setBranchPC(regfile[getRegNum(instr.getField(0))] - 1);
+                instr.setBranchPC(regfile[getRegNum(instr.getField(0))]-1);
                 squash++;
                 break;
             case "jal":
                 regfile[31] = pc + 1;
-                instr.setBranchPC(getLabelAddress(instr.getField(0)) - 1);
+                instr.setBranchPC(getLabelAddress(instr.getField(0))-1);
                 squash++;
                 break;
             default:
