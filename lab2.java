@@ -123,6 +123,8 @@ public class lab2 {
 
     static int instr_cnt;
 
+    static boolean done;
+
 
     //TODO: Current idea for handeling branches: have some sort of stack of integers to control # cycles before real branch
     // OR we change implementation to execute in a different stage rather than first
@@ -144,6 +146,7 @@ public class lab2 {
         squash = 0;
         delay = false;
         instr_cnt = 0;
+        done = false;
 
         File asm = new File(args[0]);
         Scanner sc = new Scanner(asm);
@@ -235,7 +238,10 @@ public class lab2 {
                     break;
 
                 case "s":
-                    boolean done = false;
+                    if (done) {
+                        break;
+                    }
+                    done = false;
                     int length = 1;
                     if (command_parse.length > 1) {
                         length = Integer.parseInt(command_parse[1]);
@@ -317,6 +323,9 @@ public class lab2 {
                     break;
                 case "r":
                     // run till program ends
+                    if (done) {
+                        break;
+                    }
                     done = false;
                     if (pc >= counter) {
                         if (!(pipeline[0].getOp().equals("beq") || pipeline[0].getOp().equals("bne") || pipeline[0].getOp().equals("empty"))){
