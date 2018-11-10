@@ -437,6 +437,7 @@ public class lab2 {
                     pc = 0;
                     cycles = 0;
                     instr_cnt = 0;
+                    done = false;
                     System.out.println("        Simulator reset\n");
                     break;
                 case "q":
