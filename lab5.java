@@ -91,8 +91,68 @@ class Register {
 }
 
 
+class CorrBranchPredictor{
+
+    private int ghr, num_bits, num_correct_predictions, num_predictions;
+    private int[] predictions;
+
+    public CorrBranchPredictor(int num_bits){
+        this.predictions = new int[(int) Math.pow(2, num_bits)];
+        this.num_bits = num_bits;
+
+        this.ghr = 0;
+        this.num_correct_predictions = 0;
+        this.num_predictions = 0;
+    }
+
+    public void shiftGHR(boolean taken){
+        this.ghr = (this.ghr << 1) & ((int) Math.pow(2, num_bits) - 1);
+        if (taken){
+            this.ghr += 1;
+        }
+
+    }
+
+    public void incrementPrediction(){
+        this.num_predictions++;
+        if (getPrediction()){
+            this.num_correct_predictions++;
+        }
+        if (this.predictions[this.ghr] < 3){
+            this.predictions[this.ghr] += 1;
+        }
+        shiftGHR(true);
+    }
+
+    public void decrementPrediction(){
+        this.num_predictions++;
+        if (!getPrediction()){
+            this.num_correct_predictions++;
+        }
+        if (this.predictions[this.ghr] > 0){
+            this.predictions[this.ghr] -= 1;
+        }
+        shiftGHR(false);
+    }
+
+    public boolean getPrediction(){
+        //return true if should be taken, false otherwise
+        return this.predictions[this.ghr] > 1;
+    }
+
+    public void printStats(){
+        System.out.printf("\naccuracy %.2f%% (%d correct predictions, %d predictions)\n\n", 
+            (this.num_correct_predictions * 1.0/this.num_predictions * 100), 
+            this.num_correct_predictions, 
+            this.num_predictions);
+    }
+
+}
+
+
 public class lab2 {
     static ArrayList<Label> labels;
+    static CorrBranchPredictor branch_predictor;
     static String[] register_asm_lut = {"zero", "at", "v0", "v1", "a0", "a1", "a2",
                                  "a3", "t0", "t1", "t2", "t3", "t4", "t5",
                                  "t6", "t7", "s0", "s1", "s2", "s3", "s4", "s5",
@@ -118,6 +178,11 @@ public class lab2 {
     static int pc;
 
     public static void main(String[] args) throws Exception {
+        int ghr_size = 2;
+        if (args.length > 2){
+            ghr_size = Integer.parseInt(args[2]);
+        }
+        branch_predictor = new CorrBranchPredictor(ghr_size);
         // init register file, ram, and pc
         for (int i = 0; i < 32; i++) {
             regfile[i] = 0;
@@ -255,6 +320,9 @@ public class lab2 {
                     pc = 0;
                     System.out.println("        Simulator reset\n");
                     break;
+                case "b":
+                    branch_predictor.printStats();
+                    break;
                 case "q":
                     System.exit(0);
                 default:
@@ -391,6 +459,9 @@ public class lab2 {
                 op2 = regfile[getRegNum(instr.getField(1))];
                 if (op1 == op2) {
                     pc += getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1);
+                    branch_predictor.incrementPrediction();
+                }else{
+                    branch_predictor.decrementPrediction();
                 }
                 break;
             case "bne":
@@ -398,6 +469,9 @@ public class lab2 {
                 op2 = regfile[getRegNum(instr.getField(1))];
                 if (op1 != op2) {
                     pc += getLabelAddress(instr.getField(2)) - (instr.getLineNum() + 1);
+                    branch_predictor.incrementPrediction();
+                }else{
+                    branch_predictor.decrementPrediction();
                 }
                 break;
             case "lw":
@@ -459,6 +533,6 @@ public class lab2 {
 
     static String padRight(String s, int n) {
         return String.format("%1$-" + n + "s", s);
-}
+    }
 
 }
