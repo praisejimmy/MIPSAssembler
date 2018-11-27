@@ -141,16 +141,16 @@ class CorrBranchPredictor{
     }
 
     public void printStats(){
-        System.out.printf("\naccuracy %.2f%% (%d correct predictions, %d predictions)\n\n", 
-            (this.num_correct_predictions * 1.0/this.num_predictions * 100), 
-            this.num_correct_predictions, 
+        System.out.printf("\naccuracy %.2f%% (%d correct predictions, %d predictions)\n\n",
+            (this.num_correct_predictions * 1.0/this.num_predictions * 100),
+            this.num_correct_predictions,
             this.num_predictions);
     }
 
 }
 
 
-public class lab2 {
+public class lab5 {
     static ArrayList<Label> labels;
     static CorrBranchPredictor branch_predictor;
     static String[] register_asm_lut = {"zero", "at", "v0", "v1", "a0", "a1", "a2",
@@ -325,6 +325,14 @@ public class lab2 {
                     break;
                 case "q":
                     System.exit(0);
+                    break;
+                case "o":
+                    BufferedWriter csv = new BufferedWriter(new FileWriter(new File("coordinates.csv")));
+                    for (int i = 0; i < regfile[29] - 1; i+=2){
+                        csv.write(ram[i] + "," + ram[i+1] + "\n");
+                    }
+                    csv.close();
+                    break;
                 default:
                     System.out.println("invalid command: " + command);
                     System.exit(-1);

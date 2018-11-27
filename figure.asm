@@ -1,9 +1,7 @@
 # Name:  Ryan Myers, Andrew Brown
 # Section:  CPE 315-01
 # Description:  This program plots both lines and circles
-                given a set of coordinates and shape parameters
-
-.text
+#               given a set of coordinates and shape parameters
 
 main:
     # init stack pointer to 0 for pixels
@@ -75,175 +73,191 @@ main:
 
 
 
-
+# def Line(x0, y0, x1, y1)
+    #x0=$a0, y0=$a1, x1=$a2, y1=$a3
+    #st=$t0, deltax=$t1, deltay=$t2, error=$t3
+    #y=$t4, ystep=$t5
+    #rest of random temps=$t6-$t9
 line:
-    sub     $t0, $a3, $a1
-    sub     $t1, $a2, $a0
-    sub     $t3, $t0, $t1
-    slt     $t3, $t3, $0
-    beq     $t3, $0, xgty
-    # if (y1 - y0) > (x1 - x0)
-    addi    $t4, $0, 1
-    j       chkst
-xgty:
-    addi    $t4, $0, 0
-    # $t7 now contains st
-
-chkst:
-    beq     $t4, $0, xcmp
-    add     $t0, $0, $a0
-    add     $a0, $0, $a1
-    add     $a1, $0, $t0
-    add     $t0, $0, $a2
-    add     $a2, $0, $a3
-    add     $a3, $0, $t0
-
-xcmp:
-    slt     $t0, $a2, $a0
-    beq     $t0, $0, delta
-    add     $t0, $0, $a0
-    add     $a0, $0, $a2
-    add     $a2, $0, $t0
-    add     $t0, $0, $a1
-    add     $a1, $0, $a3
-    add     $a3, $0, $t0
-
-    # set deltax, deltay, error, y
-    sub     $t5, $a2, $a0
-    # $t5 now has deltax
-    sub     $t6, $a3, $a1
-    # $t6 now has deltay
-    addi    $t7, $0, 0
-    # $t7 now has error
-    add     $t8, $0, $a1
-    # $t8 now has y
-
-    # set counter reg to use in later loop, use $t4
-    add     $t4, $0, $a0
-
-    # set ystep
-    slt     $t0, $a1, $a3
-    beq     $t0, $0, setneg
-    addi    $t9, $0, 1
-    j       plotl
-setneg:
-    addi    $t9, $0, -1
-    # $t9 now has ystep
-
-plotl:
-    slt     $t3, $t4, $a2
-    beq     $t3, $0, endl
-
-    beq     $t7, $0, pxy
-    # plot(y,x)
-    sw      $t8, 0($sp)
-    sw      $t4, 1($sp)
-    addi    $t4, $t4, 1
-    j       stpl
-pxy:
-    sw      $t4, 0($sp)
-    sw      $t8, 0($sp)
-stpl:
-    addi    $sp, $sp, 2
-    add     $t7, $t7, $t6
-    add     $t0, $t7, $t7
-    slt     $t0, $t0, $t5
-    beq     $t0, $0, nostep
-    add     $t8, $t8, $t9
-    sub     $t7, $t7, $t5
-nostep:
-    j       plotl
-endl:
-    jr      $ra
-
-
+        #abs(y1-y0) -> $t6
+        sub $t6, $a3, $a1
+        slt $t7, $t6, $0
+        beq $t7, $0, pos1
+        sub $t6, $a1, $a3
+    pos1:
+        #abs(x1-x0) -> $t7
+        sub $t7, $a2, $a0
+        slt $t8, $t7, $0
+        beq $t8, $0, pos2
+        sub $t7, $a0, $a2
+    pos2:
+        #if abs(y1-y0) > abs(x1-x0)
+        slt $t8, $t7, $t6
+        bne $t8, $0, set_st_1
+        addi $t0, $0, 0
+        j check_st
+    set_st_1:
+        addi $t0, $0, 1
+    check_st:
+        #if st==1
+        beq $t0, $0, cmp_x
+        #swap(x0,y0)
+        add $t6, $0, $a0
+        add $a0, $0, $a1
+        add $a1, $0, $t6
+        #swap(x1,y1)
+        add $t6, $0, $a2
+        add $a2, $0, $a3
+        add $a3, $0, $t6
+    #if x0 > x1
+    cmp_x:
+        slt $t6, $a2, $a0
+        beq $t6, $0, set_delta
+        #swap x0, x1
+        add $t6, $a2, $0
+        add $a2, $0, $a0
+        add $a0, $0, $t6
+        #swap y0, y1
+        add $t6, $a1, $0
+        add $a1, $0, $a3
+        add $a3, $0, $t6
+    set_delta:
+        #deltax = x1-x0
+        sub $t1, $a2, $a0
+        #deltay = abs(y1-y0)
+        sub $t2, $a3, $a1
+        slt $t7, $t2, $0
+        beq $t7, $0, cmp_y
+        sub $t2, $a1, $a3
+    cmp_y:
+        #error=0, y=y0
+        add $t3, $0, $0
+        add $t4, $0, $a1
+        #if y0<y1
+        slt $t6, $a1, $a3
+        addi $t5, $0, -1
+        beq $t6, $0, set_counter
+        addi $t5, $0, 1
+    set_counter:
+        add $t6, $0, $a0
+    inner_loop:
+            #if x1 < counter -> break
+            slt $t7, $a2, $t6
+            bne $t7, $0, end_line
+            #if st == 0, plot x,y else plot(y,x)
+            beq $t0, $0, plot_xy
+            # plot(y,x)
+            sw      $t4, 0($sp)
+            sw      $t6, 1($sp)
+            addi    $sp, $sp, 2
+            j error_stuff
+        plot_xy:
+            sw      $t6, 0($sp)
+            sw      $t4, 1($sp)
+            addi    $sp, $sp, 2
+        error_stuff:
+            add $t3, $t3, $t2
+            #if deltax < 2*error
+            add $t7, $0, $t3
+            add $t7, $t7, $t3
+            slt $t8, $t1, $t7
+            beq $t8, $0, incr_x
+            add $t4, $t4, $t5
+            sub $t3, $t3, $t1
+        incr_x:
+            addi $t6, $t6, 1
+            j inner_loop
+    end_line:
+        jr $ra
 
 circle:
-    addi    $t5, $0, 0
-    # $t5 now contains x
-    add     $t6, $0, $a2
-    # $t6 now contains y
-    addi    $t7, $0, 3
-    sub     $t7, $t7, $a2
-    sub     $t7, $t7, $a2
-    # $t7 now contains g
-    addi    $t8, $0, 10
-    sub     $t8, $t8, $a2
-    sub     $t8, $t8, $a2
-    sub     $t8, $t8, $a2
-    sub     $t8, $t8, $a2
-    # $t8 now contains diagonalInc
-    addi    $t9, $0, 6
-    # $t9 now contains rightInc
+        addi    $t5, $0, 0
+        # $t5 now contains x
+        add     $t6, $0, $a2
+        # $t6 now contains y
+        addi    $t7, $0, 3
+        sub     $t7, $t7, $a2
+        sub     $t7, $t7, $a2
+        # $t7 now contains g
+        addi    $t8, $0, 10
+        sub     $t8, $t8, $a2
+        sub     $t8, $t8, $a2
+        sub     $t8, $t8, $a2
+        sub     $t8, $t8, $a2
+        # $t8 now contains diagonalInc
+        addi    $t9, $0, 6
+        # $t9 now contains rightInc
 
-loopc:
-    slt     $t0, $t5, $t6
-    beq     $t0, $0, endc
-    # plot(xc+x,yc+y)
-    add     $t1, $a0, $t5
-    add     $t2, $a1, $t6
-    sw      $t1, 0($sp)
-    sw      $t2, 1($sp)
-    addi    $sp, $sp, 2
-    # plot(xc+x,yc-y)
-    add     $t1, $a0, $t5
-    sub     $t2, $a1, $t6
-    sw      $t1, 0($sp)
-    sw      $t2, 1($sp)
-    addi    $sp, $sp, 2
-    # plot(xc-x,yc+y)
-    sub     $t1, $a0, $t5
-    add     $t2, $a1, $t6
-    sw      $t1, 0($sp)
-    sw      $t2, 1($sp)
-    addi    $sp, $sp, 2
-    # plot(xc-x,yc-y)
-    sub     $t1, $a0, $t5
-    sub     $t2, $a1, $t6
-    sw      $t1, 0($sp)
-    sw      $t2, 1($sp)
-    addi    $sp, $sp, 2
-    # plot(xc+y,yc+x)
-    add     $t1, $a0, $t6
-    add     $t2, $a1, $t5
-    sw      $t1, 0($sp)
-    sw      $t2, 1($sp)
-    addi    $sp, $sp, 2
-    # plot(xc+y,yc-x)
-    add     $t1, $a0, $t6
-    sub     $t2, $a1, $t5
-    sw      $t1, 0($sp)
-    sw      $t2, 1($sp)
-    addi    $sp, $sp, 2
-    # plot(xc-y,yc+x)
-    sub     $t1, $a0, $t6
-    add     $t2, $a1, $t5
-    sw      $t1, 0($sp)
-    sw      $t2, 1($sp)
-    addi    $sp, $sp, 2
-    # plot(xc-y,yc-x)
-    sub     $t1, $a0, $t6
-    sub     $t2, $a1, $t5
-    sw      $t1, 0($sp)
-    sw      $t2, 1($sp)
-    addi    $sp, $sp, 2
-    # conditional thing
-    slt     $t0, $t7, $0
-    bne     $t0, $0, elsec
-    add     $t7, $t7, $t8
-    addi    $t8, $t8, 8
-    addi    $t6, $t6, -1
-    j       rinc
-elsec:
-    add     $t7, $t7, $t9
-    addi    $t8, $t8, 4
-rinc:
-    addi    $t9, $t9, 4
-    addi    $t5, $t5, 1
-    j       loopc
+    loopc:
+        slt     $t0, $t6, $t5
+        bne     $t0, $0, endc
+        # plot(xc+x,yc+y)
+        add     $t1, $a0, $t5
+        add     $t2, $a1, $t6
+        sw      $t1, 0($sp)
+        sw      $t2, 1($sp)
+        addi    $sp, $sp, 2
+        # plot(xc+x,yc-y)
+        add     $t1, $a0, $t5
+        sub     $t2, $a1, $t6
+        sw      $t1, 0($sp)
+        sw      $t2, 1($sp)
+        addi    $sp, $sp, 2
+        # plot(xc-x,yc+y)
+        sub     $t1, $a0, $t5
+        add     $t2, $a1, $t6
+        sw      $t1, 0($sp)
+        sw      $t2, 1($sp)
+        addi    $sp, $sp, 2
+        # plot(xc-x,yc-y)
+        sub     $t1, $a0, $t5
+        sub     $t2, $a1, $t6
+        sw      $t1, 0($sp)
+        sw      $t2, 1($sp)
+        addi    $sp, $sp, 2
+        # plot(xc+y,yc+x)
+        add     $t1, $a0, $t6
+        add     $t2, $a1, $t5
+        sw      $t1, 0($sp)
+        sw      $t2, 1($sp)
+        addi    $sp, $sp, 2
+        # plot(xc+y,yc-x)
+        add     $t1, $a0, $t6
+        sub     $t2, $a1, $t5
+        sw      $t1, 0($sp)
+        sw      $t2, 1($sp)
+        addi    $sp, $sp, 2
+        # plot(xc-y,yc+x)
+        sub     $t1, $a0, $t6
+        add     $t2, $a1, $t5
+        sw      $t1, 0($sp)
+        sw      $t2, 1($sp)
+        addi    $sp, $sp, 2
+        # plot(xc-y,yc-x)
+        sub     $t1, $a0, $t6
+        sub     $t2, $a1, $t5
+        sw      $t1, 0($sp)
+        sw      $t2, 1($sp)
+        addi    $sp, $sp, 2
+        # conditional thing
+        slt     $t0, $t7, $0
+        bne     $t0, $0, elsec
+        add     $t7, $t7, $t8
+        addi    $t8, $t8, 8
+        addi    $t6, $t6, -1
+        j       rinc
+    elsec:
+        add     $t7, $t7, $t9
+        addi    $t8, $t8, 4
+    rinc:
+        addi    $t9, $t9, 4
+        addi    $t5, $t5, 1
+        j       loopc
 
-endc:
-    jr      $ra
+    endc:
+        jr      $ra
 
 
 endprog:
+    #dummy instruction
+    add $0, $0, $0
