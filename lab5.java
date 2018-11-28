@@ -1,6 +1,6 @@
 // Name: Andrew Brown, Ryan Myers
 // Section: 01
-// Lab 2: MIPS Assembler
+// Lab 5: Correlating Branch Predictor and Bresenham Line/Circle Algorithms
 import java.io.*;
 import java.util.*;
 
